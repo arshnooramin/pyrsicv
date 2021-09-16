@@ -18,6 +18,37 @@ def regNumToName(num):
             's8', 's9', 's10', 's11', # 24..27]
             't3', 't4', 't5', 't6'][num] # 28..31
 
+# reg symbol table
+reg_symb = {
+    0: 'zero', 1: 'ra', 10: 'a0', 11: 'a1', 12: 'a2', 
+    13: 'a3', 14: 'a4', 15: 'a5', 16: 'a6', 17: 'a7'
+}
+
+# instr dict for opcode, funct3, and funct7 lookup
+instr_dict = {
+    19: {
+        0: 'addi'
+    },
+    51: {
+        0: {
+            0: 'add',
+            32: 'sub'
+        }
+    },
+    115: {
+        0: {
+            0: 'ecall',
+            1: 'ebreak'
+        }
+    }
+}
+
+# instr type dict
+instr_type = {
+    'i': ['addi', 'ecall'],
+    'r': ['add', 'sub']
+}
+
 class Instruction():
     "represents/decodes RISCV instructions"    
     def __init__ (self, val, pc, symbols = {}):
@@ -30,98 +61,72 @@ class Instruction():
         self.val = val        
         self.pc = pc # pc relative instrs need pc to compute targets for display
         self.symbols = symbols
-        # opcode for different types of instructions
-        self.op_dict = {
-            'r': [0b0110011, 0b0111011],
-            'i': [0b0000011, 0b0001111, 0b0010011, 0b0011011, 0b1100111, 0b1110011]
-        }
-        # rd symbol table
-        self.reg_symb = {
-            0: 'zero', 1: 'ra', 10: 'a0', 11: 'a1', 12: 'a2', 13: 'a3', 
-            14: 'a4', 15: 'a5', 16: 'a6', 17: 'a7'
-        }
-        # instruction dictionary (opcode/funct3/funct7)
-        self.instr_dict = {
-            19: {
-                0: 'addi'
-            },
-            51: {
-                0: {
-                    0: 'add',
-                    32: 'sub'
-                }
-            },
-            115: {
-                0: {
-                    0: 'ecall',
-                    1: 'ebreak'
-                }
-            }
-        }
     
-    def get_inst_type(self, opcode):
-        for inst_type in self.op_dict:
-            for op in self.op_dict[inst_type]:
-                if opcode == op:
-                    return inst_type
-    
+    def get_instr_type(self, instr):
+        "get the instr type based on the instr"
+        for type in instr_type:
+            for curr in instr_type[type]:
+                if instr == curr:
+                    return type
+
+    def check_pseudo(self, instr, rs1):
+        "check if the instr is a pseudo instr, if it is replace it"
+        if instr == 'addi' and rs1 == 'zero':
+            return 'li', None
+        else:
+            return instr, rs1
+
+    def get_instr(self):
+        "get the instr from the value"
+        # determine what instruction it is
+        obj = instr_dict[self.val & 0x7f]
+        if type(obj) == str:
+            return obj
+        else:
+            # get funct3
+            funct3 = self.val >> 12 & 0x7
+            obj = obj[funct3]
+            if type(obj) == str:
+                return obj
+            else:
+                # get funct7
+                funct7 = self.val >> 25 & 0x7F
+                return obj[funct7]
+
     def __str__ (self):
         """
         Translates the machine instructions into human-readable assembly instructions
         """
-        # analyze the first six bits
-        opcode = self.val & 0x7f
-
+        # get the instruction from value
+        instr = self.get_instr()
+        
         # get the instruction type based on opcode
-        inst_type = self.get_inst_type(opcode)
+        type = self.get_instr_type(instr)
 
-        # determine what instruction it is
-        instr_obj = self.instr_dict[opcode]
-        if type(instr_obj) == str:
-            instr = instr_obj
-        else:
-            # get funct3
-            funct3 = self.val >> 12 & 0x7
-            instr_obj = instr_obj[funct3]
-            if type(instr_obj) == str:
-                instr = instr_obj
-            else:
-                # get funct7
-                if inst_type == 'r':
-                    funct7 = self.val >> 25 & 0x7F
-                elif inst_type == 'i':
-                    funct7 = self.val >> 20 & 0xFFF
-                else:
-                    return None
-                instr = instr_obj[funct7]
-
+        # set rd, rs1, rs2 or imm
         rd = None; rs1 = None; rs2imm = None
         # if instruction type is R
-        if inst_type == 'i' or inst_type == 'r':
-            # get the rd
-            rd = self.reg_symb[self.val >> 7 & 0x1F]
-            rs1 = self.reg_symb[self.val >> 15 & 0x1F]
-        if inst_type == 'r':
-            # get rs2
-            rs2imm = self.reg_symb[self.val >> 20 & 0x1F]
-        elif inst_type == 'i':
-            # get imm
-            rs2imm = self.val >> 20 & 0xFFF
-
-        # check for pseudo operations
-        if instr == 'addi' and rs1 == 'zero':
-            instr = 'li'; rs1 = None
-        
+        if type == 'i' or type == 'r': # get the rd and rs1
+            rd = reg_symb[self.val >> 7 & 0x1F]
+            rs1 = reg_symb[self.val >> 15 & 0x1F]
+            if type == 'r': # get rs2
+                rs2imm = reg_symb[self.val >> 20 & 0x1F]
+            elif type == 'i': # get imm
+                rs2imm = self.val >> 20 & 0xFFF
         # clear if all registers zero
         if rd == 'zero' and rs1 == 'zero' and rs2imm == 0:
             rd = None; rs1 = None; rs2imm = None
 
+        # check and replace if pseudo instr
+        instr, rs1 = self.check_pseudo(instr, rs1)
+        
+        # create the human-readable code string
         readable = '{}\t\t'.format(instr)
-        if rd:
+        if rd: # if rd exist add to output string
             readable += rd
-        if rs1:
+        if rs1: # if rs exist add to output string
             readable += ',{}'.format(rs1)
-        if rs2imm:
+        if rs2imm: # if rs2 exist add to output string
             readable += ',{}'.format(rs2imm)
 
         return readable + '\n'
