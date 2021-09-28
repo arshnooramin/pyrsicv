@@ -4,12 +4,13 @@ aluNumToOp = ['x','xor','cp','sltu',   # 0..3
 
 # define a function to implement ALU
 def alu(op1, op2, alu_fun):
+    # figure out the op and perform the respective op
     if alu_fun == 1: # xor
         return op1 ^ op2
     if alu_fun == 2: # cp
         return op1
     if alu_fun == 3: # sltu
-        return (op1 & 0xffffffff) << op2
+        return op1 * (2**op2)
     if alu_fun == 4: # and
         return op1 & op2
     if alu_fun == 5: # add
@@ -26,6 +27,7 @@ def alu(op1, op2, alu_fun):
         return (op1 & 0xffffffff) << op2
     if alu_fun == 11: # or
         return op1 | op2
+    # else the output is 0
     return 0
 
 # testbench for alu

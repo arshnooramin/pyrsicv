@@ -1,0 +1,33 @@
+instr,val_inst,br_type,op1_sel,op2_sel,ALU_fun,wb_sel,rf_wen,mem_em,mem_wr,mask_type,csr_cmd
+add,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_ADD (5),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+mul,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx
+sub,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_SUB (8),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+sll,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_SLL (10),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+mulh,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx
+slt,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_SLT (6),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+xor,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_XOR (1),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+div,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx
+srl,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_SRL (9),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+sra,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_SRA (7),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+or,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_OR (11),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+rem,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx
+and,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_AND (4),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+lb,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_ADD (5),WB_MEM (2),REN_1 (1),MEN_1 (1),M_XRD (0),MT_B (1),CSR.N (3)
+lh,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_ADD (5),WB_MEM (2),REN_1 (1),MEN_1 (1),M_XRD (0),MT_HU (2),CSR.N (3)
+lw,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_ADD (5),WB_MEM (2),REN_1 (1),MEN_1 (1),M_XRD (0),MT_W (4),CSR.N (3)
+addi,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_ADD (5),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+slli,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_SLL (10),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+slti,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_SLT (6),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+xori,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_XOR (1),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+srli,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_SRL (9),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+srai,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_SRA (7),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+ori,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_OR (11),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+andi,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMI (1),ALU_AND (4),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+ecall,Y (1),BR_N (0),OP1_RS1 (0),OP2_RS2 (0),ALU_X (0),WB_PC4 (0),REN_0 (0),MEN_0 (0),M_XRD (0),MT_W (4),CSR.I (2)
+sb,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMS (2),ALU_ADD (5),WB_PC4 (0),REN_0 (0),MEN_1 (1),M_XWR (1),MT_B (1),CSR.N (3)
+sh,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMS (2),ALU_ADD (5),WB_PC4 (0),REN_0 (0),MEN_1 (1),M_XWR (1),MT_HU (2),CSR.N (3)
+sw,Y (1),BR_N (0),OP1_RS1 (0),OP2_IMS (2),ALU_ADD (5),WB_PC4 (0),REN_0 (0),MEN_1 (1),M_XWR (1),MT_W (4),CSR.N (3)
+beq,Y (1),BR_EQ (8),OP1_RS1 (0),OP2_RS2 (0),ALU_X (0),WB_PC4 (0),REN_0 (0),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+bne,Y (1),BR_NE (4),OP1_RS1 (0),OP2_RS2 (0),ALU_X (0),WB_PC4 (0),REN_0 (0),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+lui,Y (1),BR_N (0),OP1_IMU (2),OP2_RS2 (0),ALU_COPY1 (2),WB_ALU (1),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
+jal,Y (1),BR_J (6),OP1_RS1 (0),OP2_RS2 (0),ALU_X (0),WB_PC4 (0),REN_1 (1),MEN_0 (0),M_XRD (0),MT_W (4),CSR.N (3)
