@@ -1,3 +1,4 @@
+# function to define/make muxes
 def make_mux(*args):
    return lambda i: args[i]()
 
