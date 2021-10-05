@@ -20,21 +20,47 @@ def regNumToName(num):
 
 # reg symbol table
 reg_symb = {
-    0: 'zero', 1: 'ra', 10: 'a0', 11: 'a1', 12: 'a2', 
-    13: 'a3', 14: 'a4', 15: 'a5', 16: 'a6', 17: 'a7'
+    0: 'zero', 1: 'ra', 2: 'sp', 3: 'gp', 4: 'tp',
+    5: 't0', 6: 't1', 7: 't2', 8: 's0', 9: 's1',
+    10: 'a0', 11: 'a1', 12: 'a2', 13: 'a3', 14: 'a4', 
+    15: 'a5', 16: 'a6', 17: 'a7', 18: 's2', 19: 's3',
+    20: 's4', 21: 's5', 22: 's6', 23: 's7', 24: 's8',
+    25: 's9', 26: 's10', 27: 's11', 28: 't3', 29: 't4',
+    30: 't5', 31: 't6'
 }
 
 # instr dict for opcode, funct3, and funct7 lookup
 instr_dict = {
     19: {
-        0: 'addi'
+        0: 'addi',
+        1: 'slli',
+        2: 'slti',
+        3: 'sltiu',
+        4: 'xori',
+        5: {
+            0: 'srli',
+            32: 'srai'
+        },
+        6: 'ori',
+        7: 'andi'
     },
     51: {
         0: {
             0: 'add',
             32: 'sub'
-        }
+        },
+        1: 'sll',
+        2: 'slt',
+        3: 'sltu',
+        4: 'xor',
+        5: {
+            0: 'srl',
+            32: 'sra'
+        },
+        6: 'or',
+        7: 'and'
     },
+    55: 'lui',
     115: {
         0: {
             0: 'ecall',
@@ -45,8 +71,11 @@ instr_dict = {
 
 # instr type dict
 instr_type = {
-    'i': ['addi', 'ecall'],
-    'r': ['add', 'sub']
+    'i': ['addi', 'slli', 'slti', 'sltiu', 'xori', 'srli',
+          'srai', 'ori', 'andi', 'ecall'],
+    'r': ['add', 'sub', 'sll', 'slt', 'sltu', 'xor', 'srl', 
+          'sra', 'or', 'and'],
+    'u': ['lui']
 }
 
 class Instruction():
@@ -61,6 +90,8 @@ class Instruction():
         self.val = val        
         self.pc = pc # pc relative instrs need pc to compute targets for display
         self.symbols = symbols
+        self.funct3 = 0
+        self.funct7 = 0
         # get the instruction from value
         self.instr = self.get_instr()
         # get the instruction type based on opcode
@@ -80,6 +111,8 @@ class Instruction():
             return (False, self.val >> 20 & 0x1F)
         elif self.type == 'i': # get imm
             return (True, self.val >> 20 & 0xFFF)
+        elif self.type == 'u':
+            return (True, self.val >> 12 & 0xFFFFF)
     
     # returns the funct3 val
     def get_funct3(self):
@@ -103,6 +136,8 @@ class Instruction():
         "check if the instr is a pseudo instr, if it is replace it"
         if instr == 'addi' and rs1 == 'zero':
             return 'li', None
+        if self.type == 'u':
+            return instr, None
         else:
             return instr, rs1
 
@@ -114,14 +149,14 @@ class Instruction():
             return obj
         else:
             # get funct3
-            funct3 = self.get_funct3()
-            obj = obj[funct3]
+            self.funct3 = self.get_funct3()
+            obj = obj[self.funct3]
             if type(obj) == str:
                 return obj
             else:
                 # get funct7
-                funct7 = self.get_funct7()
-                return obj[funct7]
+                self.funct7 = self.get_funct7()
+                return obj[self.funct7]
     
     def __str__ (self):
         """
@@ -131,14 +166,14 @@ class Instruction():
         # set rd, rs1, rs2 or imm
         rd = None; rs1 = None; rs2imm = None
         # if instruction type is R
-        if self.type == 'i' or self.type == 'r': # get the rd and rs1
-            rd = reg_symb[self.get_rd()]
-            rs1 = reg_symb[self.get_rs1()]
-            rs2_tup = self.get_rs2imm()
-            if rs2_tup[0]: # if imm
-                rs2imm = rs2_tup[1]
-            else: # if rs2
-                rs2imm = reg_symb[rs2_tup[1]]
+        # if self.type == 'i' or self.type == 'r': # get the rd and rs1
+        rd = reg_symb[self.get_rd()]
+        rs1 = reg_symb[self.get_rs1()]
+        rs2_tup = self.get_rs2imm()
+        if rs2_tup[0]: # if imm
+            rs2imm = rs2_tup[1]
+        else: # if rs2
+            rs2imm = reg_symb[rs2_tup[1]]
         # clear if all registers zero
         if rd == 'zero' and rs1 == 'zero' and rs2imm == 0:
             rd = None; rs1 = None; rs2imm = None

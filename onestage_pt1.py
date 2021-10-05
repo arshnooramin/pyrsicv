@@ -38,7 +38,7 @@ def display():
             rs2imm_str = f"rs2: {rs2_val} [{rs2_addr}] i_imm: xxxx"
         return f"PC: {pc_val:08x}, IR: {instr.val:08x}, {instr}" + \
             f"rd: {RF.read(rd_addr)} [{rd_addr}] rs1: {rs1_val} [{rs1_addr}] " + rs2imm_str + \
-            f" op: {instr.get_opcode():x} func3: {instr.get_funct3()} func7: {instr.get_funct7()}" + \
+            f" op: {instr.get_opcode():x} func3: {instr.funct3} func7: {instr.funct7}" + \
             f" alu_fun: {alufun_tup[0]}"
 
 startup = True
@@ -76,6 +76,8 @@ for t in itertools.count():
 
     # get the alu fun val using decoder
     alufun_tup = controlFormatter(instr.get_instr(), "ALU_fun")
+
+    print(alufun_tup[1])
 
     # perform alu functions on the operands
     if imm != None:
