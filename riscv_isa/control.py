@@ -1,5 +1,5 @@
 import csv
-from decoder import control, enums
+from riscv_isa.decoder import control, enums
 
 """
 Generates a table for the control signals for each of the required
@@ -12,7 +12,8 @@ req = ["add", "mul", "sub", "sll", "mulh", "slt", "xor", "div", "srl",
        "sh", "sw", "beq", "bne", "lui", "jal"]
 
 # a helper method to get control signal enums and their values
-def controlFormatter(obj, field):
+def controlFormatter(instr, field):
+    obj = control[instr]
     sig_type = obj.renums[field][getattr(obj,field)]
     val = enums[field][sig_type]
     return sig_type, val
@@ -31,8 +32,7 @@ with open('control_table.csv', 'w', newline='') as csvfile:
             vals[0] = instr
             writer.writerow(vals)
         else:
-            temp_obj = control[instr]
-            out = ["%s (%s)" % controlFormatter(temp_obj, field) \
-                   for field in temp_obj.fields]
+            out = ["%s (%s)" % controlFormatter(instr, field) \
+                   for field in control[instr].fields]
             out.insert(0, instr)
             writer.writerow(out)
