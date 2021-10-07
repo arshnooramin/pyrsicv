@@ -7,6 +7,7 @@ from regfile import RegFile
 from riscv_isa.control import controlFormatter
 from riscv_isa import Instruction
 from alu import alu
+from mux import make_mux
 
 # the PC register
 PC = Register()
@@ -32,12 +33,14 @@ def display():
         return "PC: xxxxxxxx, IR: xxxxxxxx"
     else:
         rs2imm_str= ""
-        if imm != None:
-            rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {imm:04x}"
+        if instr.i_imm != None:
+            rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.i_imm:04x}"
+        elif instr.u_imm != None:
+            rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.u_imm:04x}"
         else:
-            rs2imm_str = f"rs2: {rs2_val} [{rs2_addr}] i_imm: xxxx"
+            rs2imm_str = f"rs2: {rs2_val} [{instr.rd}] i_imm: xxxx"
         return f"PC: {pc_val:08x}, IR: {instr.val:08x}, {instr}" + \
-            f"rd: {RF.read(rd_addr)} [{rd_addr}] rs1: {rs1_val} [{rs1_addr}] " + rs2imm_str + \
+            f"rd: {RF.read(instr.rd)} [{instr.rd}] rs1: {rs1_val} [{instr.rs1}] " + rs2imm_str + \
             f" op: {instr.get_opcode():x} func3: {instr.funct3} func7: {instr.funct7}" + \
             f" alu_fun: {alufun_tup[0]}"
 
@@ -59,34 +62,29 @@ for t in itertools.count():
     instr = Instruction(imem[pc_val], pc_val)
 
     # get rd, rs1, and rs2 addresses and their values using regfile
-    rs1_addr = instr.get_rs1()
-    rs1_val = RF.read(rs1_addr)
-    
-    # get rs2 or imm depending on instr type
-    rs2_tup = instr.get_rs2imm()
-    imm = None; rs2_addr = None; rs2_val = None
-    if rs2_tup[0]: # if imm
-        imm = rs2_tup[1]
-    else: # if rs2
-        rs2_addr = rs2_tup[1]
-        rs2_val = RF.read(rs2_addr)
-    
-    rd_addr = instr.get_rd()
-    rd_val = RF.read(rd_addr)
+    rs1_val = RF.read(instr.rs1)
+
+    # get the rs2 value if a rs2 address exists
+    rs2_val = None
+    if instr.rs2 != None:
+        rs2_val = RF.read(instr.rs2)
+
+    # define the op1 and op2 muxes
+    op1_mux = make_mux(lambda: rs1_val, lambda: None, lambda: instr.u_imm)
+    op2_mux = make_mux(lambda: rs2_val, lambda: instr.i_imm, lambda: None, lambda: pc_val)
 
     # get the alu fun val using decoder
     alufun_tup = controlFormatter(instr.get_instr(), "ALU_fun")
+    # get the op1 and op2 sel
+    op1_sel = controlFormatter(instr.get_instr(), "op1_sel")[1]
+    op2_sel = controlFormatter(instr.get_instr(), "op2_sel")[1]
 
-    print(alufun_tup[1])
-
-    # perform alu functions on the operands
-    if imm != None:
-        alu_val = alu(rs1_val, imm, alufun_tup[1])
-    else:
-        alu_val = alu(rs1_val, rs2_val, alufun_tup[1])
-    
+    alu_val = alu(op1_mux(op1_sel), op2_mux(op2_sel), alufun_tup[1])
+ 
+    # get rf_wen
+    rf_wen = controlFormatter(instr.get_instr(), "rf_wen")[1]
     # update register values
-    RF.clock(rd_addr, alu_val, True)
+    RF.clock(instr.rd, alu_val, rf_wen)
 
     # print one line at the end of the clock cycle
     print(f"{t}:", display())
