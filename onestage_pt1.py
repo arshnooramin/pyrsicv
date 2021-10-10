@@ -77,8 +77,6 @@ for t in itertools.count():
     # get the alu fun val using decoder
     alufun_tup = controlFormatter(instr.get_instr(), "ALU_fun")
 
-    print(alufun_tup[1])
-
     # perform alu functions on the operands
     if imm != None:
         alu_val = alu(rs1_val, imm, alufun_tup[1])
