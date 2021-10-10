@@ -19,17 +19,6 @@ def regNumToName(num):
             's8', 's9', 's10', 's11', # 24..27]
             't3', 't4', 't5', 't6'][num] # 28..31
 
-# reg symbol table
-reg_symb = {
-    0: 'zero', 1: 'ra', 2: 'sp', 3: 'gp', 4: 'tp',
-    5: 't0', 6: 't1', 7: 't2', 8: 's0', 9: 's1',
-    10: 'a0', 11: 'a1', 12: 'a2', 13: 'a3', 14: 'a4', 
-    15: 'a5', 16: 'a6', 17: 'a7', 18: 's2', 19: 's3',
-    20: 's4', 21: 's5', 22: 's6', 23: 's7', 24: 's8',
-    25: 's9', 26: 's10', 27: 's11', 28: 't3', 29: 't4',
-    30: 't5', 31: 't6'
-}
-
 # instr dict for opcode, funct3, and funct7 lookup
 instr_dict = {
     19: {
@@ -180,17 +169,17 @@ class Instruction():
         """
         Translates the machine instructions into human-readable assembly instructions
         """
-        rd_str = reg_symb[self.rd]
-        rs1_str = reg_symb[self.rs1]
+        rd_str = regNumToName(self.rd)
+        rs1_str = regNumToName(self.rs1)
         if self.rs2 != None:
-            rs2imm_str = reg_symb[self.rs2]
+            rs2imm_str = regNumToName(self.rs2)
         elif self.i_imm != None:
-            rs2imm_str = self.i_imm
+            rs2imm_str = str(self.i_imm)
         elif self.u_imm != None:
-            rs2imm_str = self.u_imm
+            rs2imm_str = str(self.u_imm)
 
         # clear if all registers zero
-        if rd_str == 'zero' and rs1_str == 'zero' and rs2imm_str == 0:
+        if rd_str == 'zero' and rs1_str == 'zero' and rs2imm_str == "0":
             rd_str = None; rs1_str = None; rs2imm_str = None
 
         # check and replace if pseudo instr

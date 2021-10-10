@@ -30,19 +30,24 @@ except:
 
 def display():
     if pc_val == None:
-        return "PC: xxxxxxxx, IR: xxxxxxxx"
+        return "PC: xxxxxxxx, IR: xxxxxxxx\n"
     else:
-        rs2imm_str= ""
         if instr.i_imm != None:
             rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.i_imm:04x}"
         elif instr.u_imm != None:
             rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.u_imm:04x}"
         else:
-            rs2imm_str = f"rs2: {rs2_val} [{instr.rd}] i_imm: xxxx"
+            rs2imm_str = f"rs2: {rs2_val} [{instr.rs2}] i_imm: xxxx"
+        
+        if rs1_val != None:
+            rs1_str = f"rs1: {rs1_val} [{instr.rs1}] "
+        else:
+            rs1_str = f"rs1: xxxxxxxx [xx] "
+        
         return f"PC: {pc_val:08x}, IR: {instr.val:08x}, {instr}" + \
-            f"rd: {RF.read(instr.rd)} [{instr.rd}] rs1: {rs1_val} [{instr.rs1}] " + rs2imm_str + \
+            f"rd: {RF.read(instr.rd)} [{instr.rd}] " + rs1_str + rs2imm_str + \
             f" op: {instr.get_opcode():x} func3: {instr.funct3} func7: {instr.funct7}" + \
-            f" alu_fun: {alufun_tup[0]}"
+            f" alu_fun: {alufun_tup[0]}\n"
 
 startup = True
 # generate system clocks until we reach a stopping condition
@@ -88,6 +93,16 @@ for t in itertools.count():
 
     # print one line at the end of the clock cycle
     print(f"{t}:", display())
+
+    # handle env calls
+    # check a0 value env call type
+    a0_val = RF.read(10)
+    if instr.instr == 'ecall' and a0_val == 1:
+        print(f"ECALL({a0_val}): {RF.read(11)}\n")
+    elif instr.instr == 'ecall' and (a0_val == 0 or a0_val == 10):
+        print(f"ECALL({a0_val}): " + 'EXIT\n' if a0_val == 10 else 'HALT\n')
+        RF.display()
+        break
 
     # clock logic blocks, PC is the only clocked module!
     # here the next pc value is always +4

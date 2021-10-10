@@ -22,9 +22,9 @@ def alu(op1, op2, alu_fun):
     if alu_fun == 8: # sub
         return op1 - op2
     if alu_fun == 9: # srl
-        return (op1 & 0xffffffff) >> op2
+        return op1 >> op2
     if alu_fun == 10: # sll
-        return (op1 & 0xffffffff) << op2
+        return op1 << op2
     if alu_fun == 11: # or
         return op1 | op2
     # else the output is 0
