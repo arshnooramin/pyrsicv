@@ -130,7 +130,7 @@ class Instruction():
         return sextend(self.val >> 20 & 0xFFF, 12)
 
     def get_uimm(self):
-        return sextend(self.val >> 12 & 0xFFFFF, 20)
+        return sextend(self.val & 0xFFFFF000, 32)
     
     # returns the funct3 val
     def get_funct3(self):
