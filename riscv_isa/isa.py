@@ -1,5 +1,6 @@
 from os import stat
 from .csr_list import csrs
+from pydigital.utils import sextend
 class BadInstruction(Exception):
     pass
 
@@ -89,13 +90,30 @@ class Instruction():
         """
         self.val = val        
         self.pc = pc # pc relative instrs need pc to compute targets for display
-        self.symbols = symbols
-        self.funct3 = 0
-        self.funct7 = 0
+        # init funct7 and funct3
+        self.funct3 = 0; self.funct7 = 0
+        # init rd, rs1, rs2
+        self.rd = None; self.rs1 = None; self.rs2 = None
+        # init immediates
+        self.i_imm = None; self.u_imm = None
+        # decode the instruction
+        self.decode_inst()
+    
+    def decode_inst(self):
         # get the instruction from value
         self.instr = self.get_instr()
         # get the instruction type based on opcode
         self.type = self.get_instr_type()
+        # if instruction type is R
+        # if self.type == 'i' or self.type == 'r': # get the rd and rs1
+        self.rd = self.get_rd()
+        self.rs1 = self.get_rs1()
+        if self.type == 'i': # if i imm
+            self.i_imm = self.get_iimm()
+        elif self.type == 'r': # if rs2
+            self.rs2 = self.get_rs2()
+        elif self.type == 'u': # if u imm
+            self.u_imm = self.get_uimm()
 
     # returns the rd val
     def get_rd(self):
@@ -105,14 +123,14 @@ class Instruction():
     def get_rs1(self):
         return self.val >> 15 & 0x1F
     
-    # returns if value is imm or rs2 and the respective val
-    def get_rs2imm(self):
-        if self.type == 'r': # get rs2
-            return (False, self.val >> 20 & 0x1F)
-        elif self.type == 'i': # get imm
-            return (True, self.val >> 20 & 0xFFF)
-        elif self.type == 'u':
-            return (True, self.val >> 12 & 0xFFFFF)
+    def get_rs2(self):
+        return self.val >> 20 & 0x1F
+    
+    def get_iimm(self):
+        return sextend(self.val >> 20 & 0xFFF, 12)
+
+    def get_uimm(self):
+        return sextend(self.val & 0xFFFFF000, 32)
     
     # returns the funct3 val
     def get_funct3(self):
@@ -132,14 +150,14 @@ class Instruction():
                 if self.instr == curr:
                     return type
 
-    def check_pseudo(self, instr, rs1):
+    def check_pseudo(self, rs1_str):
         "check if the instr is a pseudo instr, if it is replace it"
-        if instr == 'addi' and rs1 == 'zero':
+        if self.instr == 'addi' and rs1_str == 'zero':
             return 'li', None
         if self.type == 'u':
-            return instr, None
+            return self.instr, None
         else:
-            return instr, rs1
+            return self.instr, rs1_str
 
     def get_instr(self):
         "get the instr from the value"
@@ -162,32 +180,29 @@ class Instruction():
         """
         Translates the machine instructions into human-readable assembly instructions
         """
+        rd_str = reg_symb[self.rd]
+        rs1_str = reg_symb[self.rs1]
+        if self.rs2 != None:
+            rs2imm_str = reg_symb[self.rs2]
+        elif self.i_imm != None:
+            rs2imm_str = self.i_imm
+        elif self.u_imm != None:
+            rs2imm_str = self.u_imm
 
-        # set rd, rs1, rs2 or imm
-        rd = None; rs1 = None; rs2imm = None
-        # if instruction type is R
-        # if self.type == 'i' or self.type == 'r': # get the rd and rs1
-        rd = reg_symb[self.get_rd()]
-        rs1 = reg_symb[self.get_rs1()]
-        rs2_tup = self.get_rs2imm()
-        if rs2_tup[0]: # if imm
-            rs2imm = rs2_tup[1]
-        else: # if rs2
-            rs2imm = reg_symb[rs2_tup[1]]
         # clear if all registers zero
-        if rd == 'zero' and rs1 == 'zero' and rs2imm == 0:
-            rd = None; rs1 = None; rs2imm = None
+        if rd_str == 'zero' and rs1_str == 'zero' and rs2imm_str == 0:
+            rd_str = None; rs1_str = None; rs2imm_str = None
 
         # check and replace if pseudo instr
-        instr, rs1 = self.check_pseudo(self.instr, rs1)
+        self.instr, rs1_str = self.check_pseudo(rs1_str)
         
         # create the human-readable code string
-        readable = '{} '.format(instr)
-        if rd: # if rd exist add to output string
-            readable += rd
-        if rs1: # if rs exist add to output string
-            readable += ',{}'.format(rs1)
-        if rs2imm: # if rs2 exist add to output string
-            readable += ',{}'.format(rs2imm)
+        readable = '{} '.format(self.instr)
+        if rd_str: # if rd exist add to output string
+            readable += rd_str
+        if rs1_str: # if rs exist add to output string
+            readable += ',{}'.format(rs1_str)
+        if rs2imm_str: # if rs2 exist add to output string
+            readable += ',{}'.format(rs2imm_str)
 
         return readable + '\n'
