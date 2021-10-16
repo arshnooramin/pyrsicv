@@ -21,6 +21,12 @@ def regNumToName(num):
 
 # instr dict for opcode, funct3, and funct7 lookup
 instr_dict = {
+    3: {
+        2: 'lw'
+    },
+    23: {
+        2: 'sw'
+    },
     19: {
         0: 'addi',
         1: 'slli',
@@ -51,6 +57,15 @@ instr_dict = {
         7: 'and'
     },
     55: 'lui',
+    99: {
+        0: 'beq',
+        1: 'bne',
+        4: 'blt',
+        5: 'bge',
+        6: 'bltu',
+        7: 'bgeu'
+    },
+    111: 'jal',
     115: {
         0: {
             0: 'ecall',
@@ -62,10 +77,13 @@ instr_dict = {
 # instr type dict
 instr_type = {
     'i': ['addi', 'slli', 'slti', 'sltiu', 'xori', 'srli',
-          'srai', 'ori', 'andi', 'ecall'],
+          'srai', 'ori', 'andi', 'ecall', 'lw'],
     'r': ['add', 'sub', 'sll', 'slt', 'sltu', 'xor', 'srl', 
           'sra', 'or', 'and'],
-    'u': ['lui']
+    'u': ['lui'],
+    'sb': ['beq', 'bne', 'blt', 'bge', 'bltu', 'bgeu'],
+    'uj': ['jal'],
+    's': ['sw']
 }
 
 class Instruction():
