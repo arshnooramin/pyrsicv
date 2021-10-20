@@ -63,9 +63,11 @@ for t in itertools.count():
 
     # access instruction memory
     instr = Instruction(imem[pc_val], pc_val)
-
+    
     # get rd, rs1, and rs2 addresses and their values using regfile
-    rs1_val = RF.read(instr.rs1)
+    rs1_val = None
+    if instr.rs1 != None:
+        rs1_val = RF.read(instr.rs1)
 
     # get the rs2 value if a rs2 address exists
     rs2_val = None
