@@ -1,4 +1,4 @@
-# filename: fetch_decode.py
+# filename: onestage_pt1.py
 import sys
 import itertools
 from pydigital.memory import readmemh
@@ -32,10 +32,8 @@ def display():
     if pc_val == None:
         return "PC: xxxxxxxx, IR: xxxxxxxx\n"
     else:
-        if instr.i_imm != None:
-            rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.i_imm:04x}"
-        elif instr.u_imm != None:
-            rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.u_imm:04x}"
+        if instr.imm != None:
+            rs2imm_str = f"rs2: xxxxxxxx [xx] i_imm: {instr.imm:04x}"
         else:
             rs2imm_str = f"rs2: {rs2_val} [{instr.rs2}] i_imm: xxxx"
         
@@ -75,15 +73,15 @@ for t in itertools.count():
         rs2_val = RF.read(instr.rs2)
 
     # define the op1 and op2 muxes
-    op1_mux = make_mux(lambda: rs1_val, lambda: None, lambda: instr.u_imm)
-    op2_mux = make_mux(lambda: rs2_val, lambda: instr.i_imm, lambda: None, lambda: pc_val)
+    op1_mux = make_mux(lambda: rs1_val, lambda: None, lambda: instr.imm)
+    op2_mux = make_mux(lambda: rs2_val, lambda: instr.imm, lambda: None, lambda: pc_val)
 
     # get the alu fun val using decoder
     alufun_tup = controlFormatter(instr.get_instr(), "ALU_fun")
     # get the op1 and op2 sel
     op1_sel = controlFormatter(instr.get_instr(), "op1_sel")[1]
     op2_sel = controlFormatter(instr.get_instr(), "op2_sel")[1]
-
+    
     alu_val = alu(op1_mux(op1_sel), op2_mux(op2_sel), alufun_tup[1])
  
     # get rf_wen
