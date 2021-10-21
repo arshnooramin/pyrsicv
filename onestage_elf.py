@@ -1,4 +1,4 @@
-# filename: onestage.py
+# filename: onestage_elf.py
 import sys
 import itertools
 from pydigital.memory import readmemh, Memory, MemorySegment
