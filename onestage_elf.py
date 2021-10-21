@@ -3,9 +3,10 @@ import sys
 import itertools
 from pydigital.memory import readmemh, Memory, MemorySegment
 from pydigital.register import Register
-from regfile import RegFile
+from pydigital.elfloader import load_elf
 from riscv_isa.control import controlFormatter
 from riscv_isa import Instruction
+from regfile import RegFile
 from alu import alu
 from mux import make_mux
 
@@ -13,26 +14,26 @@ from mux import make_mux
 PC = Register()
 # the reg file
 RF = RegFile()
-# the memory segment
-MEM = Memory(MemorySegment(0xE0000, 0x4000))
-print(str(MEM.mem) + '\n')
 
 # init the stack pointer sp register
 RF.clock(2, 0xEFFFF, True)
 
 # check if a path was provided
 if len(sys.argv) != 2:
-    exit("ERROR: input hex file not provided!")
+    exit("ERROR: input elf file not provided!")
 
-# get the inputted hex path
-hex_path = sys.argv[1]
+# get the inputted elf path
+elf_path = sys.argv[1]
 
 # construct a memory segment for instruction memory
 # load the contents from the 32-bit fetch_test hex file (big endian)
 try:
-    imem = readmemh(hex_path, word_size=4, byteorder='big')
+    imem, symbols = load_elf(elf_path)
 except:
-    exit("ERROR: incorrect hex file path!")
+    exit("ERROR: couldn't read elf file!")
+
+# initialize memory from the elf
+MEM = Memory(imem)
 
 def display():
     if pc_val == None:
@@ -84,7 +85,7 @@ for t in itertools.count():
 
     # RESET the PC register
     if startup:
-        PC.reset(imem.begin_addr)
+        PC.reset(symbols["_start"])
         startup = False
         print(f"{t}:", display())
         continue
@@ -116,9 +117,10 @@ for t in itertools.count():
     alu_val = alu(op1_mux(op1_sel), op2_mux(op2_sel), alufun_tup[1])
 
     # read data memory -> get addr from alu
-    rdata = MEM.out(alu_val)
+    rdata = lambda: MEM.out(alu_val)
 
     # get mem write
+    mem_em = controlFormatter(instr.get_instr(), "mem_em")[1]
     mem_wr = controlFormatter(instr.get_instr(), "mem_wr")[1]
     # write data from alu to memory
     MEM.clock(alu_val, rs2_val, mem_wr)
@@ -126,7 +128,7 @@ for t in itertools.count():
         print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(alu_val):08x}")
     
     # define the wb mux
-    wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, lambda: rdata, lambda: None)
+    wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, lambda: None)
     # get wb_sel
     wb_sel = controlFormatter(instr.get_instr(), "wb_sel")[1]
 
@@ -147,6 +149,15 @@ for t in itertools.count():
         print(f"ECALL({a0_val}): " + 'EXIT\n' if a0_val == 10 else f"ECALL({a0_val}): " + 'HALT\n')
         RF.display()
         break
+
+    # check for UCB syscalls
+    if mem_em == 1 and mem_wr == 1 and 'tohost' in symbols:
+     if alu_val == symbols['tohost']:
+         # syscall detected, tohost is a 64 bit reg, so wait for addr of second word on 32 bit
+        val = MEM.mem[symbols['tohost']]
+        if val & 0b1 == 0b1:
+            print (f"SYSCALL: exit ({val>>1})")
+            break
     
     # define the pc mux
     pc_mux = make_mux(lambda: 4 + pc_val, lambda: None, lambda: instr.imm + pc_val, lambda: instr.imm + pc_val, lambda: None)
@@ -160,9 +171,6 @@ for t in itertools.count():
     PC.clock(pc_mux(pc_sel))
 
     # check stopping conditions on NEXT instruction
-    if PC.out() > 0x1100:
-        print("STOP -- PC is large! Is something wrong?")
-        break
     if imem[PC.out()] == 0:
         print("Done -- end of program.\n")
         # print register values at the end of program

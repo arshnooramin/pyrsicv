@@ -22,10 +22,17 @@ def regNumToName(num):
 # instr dict for opcode, funct3, and funct7 lookup
 instr_dict = {
     3: {
-        2: 'lw'
+        0: 'lb',
+        1: 'lh',
+        2: 'lw',
+        3: 'ld',
+        4: 'lbu',
+        5: 'lhu',
+        6: 'lwu'
     },
-    35: {
-        2: 'sw'
+    15: {
+        0: 'fence',
+        1: 'fence.i'
     },
     19: {
         0: 'addi',
@@ -39,6 +46,21 @@ instr_dict = {
         },
         6: 'ori',
         7: 'andi'
+    },
+    23: 'auipc',
+    27: {
+        0: 'addiw',
+        1: 'slliw',
+        5: {
+            0: 'srliw',
+            32: 'sraiw'
+        }
+    },
+    35: {
+        0: 'sb',
+        1: 'sh',
+        2: 'sw',
+        3: 'sd'
     },
     51: {
         0: {
@@ -57,6 +79,17 @@ instr_dict = {
         7: 'and'
     },
     55: 'lui',
+    59: {
+        0: {
+            0: 'addw',
+            32: 'subw'
+        },
+        1: 'sllw',
+        5: {
+            0: 'srlw',
+            32: 'sraw'
+        }
+    },
     99: {
         0: 'beq',
         1: 'bne',
@@ -65,25 +98,36 @@ instr_dict = {
         6: 'bltu',
         7: 'bgeu'
     },
+    103: 'jalr',
     111: 'jal',
     115: {
         0: {
             0: 'ecall',
             1: 'ebreak'
-        }
+        },
+        1: 'csrrw',
+        2: 'csrrs',
+        3: 'csrrc',
+        5: 'csrrwi',
+        6: 'csrrsi',
+        7: 'csrrci'
     }
 }
 
 # instr type dict
 instr_type = {
-    'i': ['addi', 'slli', 'slti', 'sltiu', 'xori', 'srli',
-          'srai', 'ori', 'andi', 'ecall', 'lw'],
-    'r': ['add', 'sub', 'sll', 'slt', 'sltu', 'xor', 'srl', 
-          'sra', 'or', 'and'],
-    'u': ['lui'],
+    'i': ['lb', 'lh', 'lw', 'ld', 'lbu', 'lhu', 'lwu',
+          'fence', 'fence.i',
+          'addi', 'slli', 'slti', 'sltiu', 'xori', 'srli', 'srai', 'ori', 'andi',
+          'addiw', 'slliw', 'srliw', 'sraiw',
+          'jalr',
+          'ecall', 'ebreak', 'csrrw', 'csrrs', 'csrrc', 'csrrwi', 'csrrsi', 'csrrci'],
+    'r': ['add', 'sub', 'sll', 'slt', 'sltu', 'xor', 'srl', 'sra', 'or', 'and',
+          'addw', 'subw', 'sllw', 'srlw', 'sraw'],
+    'u': ['auipc', 'lui'],
     'sb': ['beq', 'bne', 'blt', 'bge', 'bltu', 'bgeu'],
     'uj': ['jal'],
-    's': ['sw']
+    's': ['sb', 'sh', 'sw', 'sd']
 }
 
 class Instruction():
