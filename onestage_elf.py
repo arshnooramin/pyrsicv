@@ -35,6 +35,19 @@ except:
 # initialize memory from the elf
 MEM = Memory(imem)
 
+def handle_syscall(mem_em, mem_wr, mask_type, alu_val):
+    "handles UCB syscalls"
+    # check if a syscall was made
+    if mem_em == 1 and mem_wr == 1 and 'tohost' in symbols:
+        if alu_val == symbols['tohost']:
+            val = MEM.mem[symbols['tohost']]
+            # handle exit call
+            if val & 0b1 == 0b1:
+                print (f"SYSCALL: exit ({val>>1})\n")
+                RF.display()
+                sys.exit(val>>1)
+            # handle printf
+
 def display():
     if pc_val == None:
         return "PC: xxxxxxxx, IR: xxxxxxxx\n"
@@ -93,6 +106,12 @@ for t in itertools.count():
     # access instruction memory
     instr = Instruction(imem[pc_val], pc_val)
 
+    # no op csr calls
+    if instr.instr.startswith("csr"):
+        print(f"{t}: {instr.instr}", "instruction -- no-op\n")
+        PC.clock(pc_mux(pc_sel))
+        continue
+
     # get rd, rs1, and rs2 addresses and their values using regfile
     rs1_val = None
     if instr.rs1 != None:
@@ -119,7 +138,7 @@ for t in itertools.count():
     # read data memory -> get addr from alu
     rdata = lambda: MEM.out(alu_val)
 
-    # get mem write
+    # get mem write and mem em
     mem_em = controlFormatter(instr.get_instr(), "mem_em")[1]
     mem_wr = controlFormatter(instr.get_instr(), "mem_wr")[1]
     # write data from alu to memory
@@ -150,14 +169,10 @@ for t in itertools.count():
         RF.display()
         break
 
-    # check for UCB syscalls
-    if mem_em == 1 and mem_wr == 1 and 'tohost' in symbols:
-     if alu_val == symbols['tohost']:
-         # syscall detected, tohost is a 64 bit reg, so wait for addr of second word on 32 bit
-        val = MEM.mem[symbols['tohost']]
-        if val & 0b1 == 0b1:
-            print (f"SYSCALL: exit ({val>>1})")
-            break
+    # get mask type
+    mask_type = controlFormatter(instr.get_instr(), "rf_wen")[1]
+    # check for UCB syscalls and handle them
+    handle_syscall(mem_em, mem_wr, mask_type, alu_val)
     
     # define the pc mux
     pc_mux = make_mux(lambda: 4 + pc_val, lambda: None, lambda: instr.imm + pc_val, lambda: instr.imm + pc_val, lambda: None)
