@@ -4,6 +4,7 @@ import itertools
 from pydigital.memory import readmemh, Memory, MemorySegment
 from pydigital.register import Register
 from pydigital.elfloader import load_elf
+from pydigital.utils import as_twos_comp
 from riscv_isa.control import controlFormatter
 from riscv_isa import Instruction
 from regfile import RegFile
@@ -14,9 +15,6 @@ from mux import make_mux
 PC = Register()
 # the reg file
 RF = RegFile()
-
-# init the stack pointer sp register
-RF.clock(2, 0xEFFFF, True)
 
 # check if a path was provided
 if len(sys.argv) != 2:
@@ -35,18 +33,28 @@ except:
 # initialize memory from the elf
 MEM = Memory(imem)
 
-def handle_syscall(mem_em, mem_wr, mask_type, alu_val):
+def handle_syscall(mem_em, mem_wr, alu_val):
     "handles UCB syscalls"
     # check if a syscall was made
     if mem_em == 1 and mem_wr == 1 and 'tohost' in symbols:
-        if alu_val == symbols['tohost']:
+        if alu_val == symbols['tohost'] + 4:
             val = MEM.mem[symbols['tohost']]
             # handle exit call
             if val & 0b1 == 0b1:
                 print (f"SYSCALL: exit ({val>>1})\n")
                 RF.display()
                 sys.exit(val>>1)
-            # handle printf
+            # handle printf if not exit
+            # get all the args for putchar
+            which = MEM.mem[MEM.mem[symbols['tohost']]]
+            arg0 = MEM.mem[MEM.mem[symbols['tohost']] + 8]
+            arg1 = MEM.mem[MEM.mem[symbols['tohost']] + 16]
+            arg2 = MEM.mem[MEM.mem[symbols['tohost']] + 24]
+            # putchar implementation
+            if which == 64:
+                # print the chars
+                print(MEM.mem[arg1:arg1 + arg2].decode("ASCII"), end = '')
+            MEM.mem[symbols['fromhost']] = 1
 
 def display():
     if pc_val == None:
@@ -80,7 +88,10 @@ def branch_taken(op1, op2, br_fun):
         return 1
     elif br_fun == 2 or br_fun == 5: # bgeu and bge
         return 2 if op1 >= op2 else 0
-    elif br_fun == 3 or br_fun == 7: # blt and bltu
+    elif br_fun == 3: # blt
+        print(op1, op2)
+        return 2 if op1 < op2 else 0
+    elif br_fun == 7: # bltu
         return 2 if op1 < op2 else 0
     elif br_fun == 4: # bne
         return 2 if op1 != op2 else 0
@@ -153,6 +164,7 @@ for t in itertools.count():
 
     # get rf_wen
     rf_wen = controlFormatter(instr.get_instr(), "rf_wen")[1]
+    print(instr.instr)
     # update register values
     RF.clock(instr.rd, wb_mux(wb_sel), rf_wen)
 
@@ -169,13 +181,11 @@ for t in itertools.count():
         RF.display()
         break
 
-    # get mask type
-    mask_type = controlFormatter(instr.get_instr(), "rf_wen")[1]
     # check for UCB syscalls and handle them
-    handle_syscall(mem_em, mem_wr, mask_type, alu_val)
+    handle_syscall(mem_em, mem_wr, alu_val)
     
     # define the pc mux
-    pc_mux = make_mux(lambda: 4 + pc_val, lambda: None, lambda: instr.imm + pc_val, lambda: instr.imm + pc_val, lambda: None)
+    pc_mux = make_mux(lambda: 4 + pc_val, lambda: instr.imm + as_twos_comp(rs1_val), lambda: instr.imm + pc_val, lambda: instr.imm + pc_val, lambda: None)
 
     # get branch type
     br_type = controlFormatter(instr.get_instr(), "br_type")[1]

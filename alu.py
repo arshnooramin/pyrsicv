@@ -1,3 +1,5 @@
+from pydigital.utils import sextend
+
 aluNumToOp = ['x','xor','cp','sltu',   # 0..3
               'and', 'add', 'slt', 'sra', # 4..7
               'sub', 'srl', 'sll', 'or']  # 8..11
@@ -24,7 +26,7 @@ def alu(op1, op2, alu_fun):
     if alu_fun == 9: # srl
         return op1 >> op2
     if alu_fun == 10: # sll
-        return op1 << op2
+        return sextend(op1 << op2)
     if alu_fun == 11: # or
         return op1 | op2
     # else the output is 0

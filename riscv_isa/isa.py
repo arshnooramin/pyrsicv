@@ -1,6 +1,6 @@
 from os import stat
 from .csr_list import csrs
-from pydigital.utils import sextend, as_twos_comp
+from pydigital.utils import sextend
 class BadInstruction(Exception):
     pass
 
@@ -242,12 +242,18 @@ class Instruction():
         "check if the instr is a pseudo instr, if it is replace it"
         if self.instr == 'addi' and rs1_str == 'zero': # handle pseudo instr li
             return 'li', rd_str, None, rs2imm_str
-        elif self.instr == 'jal' and rd_str == 'zero': # reformat jal instr
-            return 'j', None, None, hex(self.pc + self.imm)[2:]
-        elif self.type == 'sb' and rs2imm_str == 'zero': # handle pseudo instr beqz
+        elif self.instr == 'jal': # reformat jal instr
+            if rd_str == 'zero': # handle pseudo instr j
+                return 'j', None, None, hex(self.pc + self.imm)[2:]
+            return self.instr, rd_str, None, hex(self.pc + self.imm)[2:]
+        elif self.instr == 'jalr' and rd_str == 'zero' and self.imm == 0: # handle pseudo instr jr
+            return 'jr', None, rs1_str, None
+        elif self.type == 'sb' and rs2imm_str == 'zero': # handle pseudo branch instrs
             return self.instr + 'z', None, rs1_str, hex(self.pc + self.imm)[2:]
-        elif self.type == 'u': # reformat u type instr
+        elif self.type == 'u': # reformat u type instrs
             return self.instr, rd_str, None, rs2imm_str
+        elif self.type == 's': # reformat s type instrs
+            return self.instr, regNumToName(self.rs2), f"{self.imm}({rs1_str})", None
         else:
             return self.instr, rd_str, rs1_str, rs2imm_str
 
