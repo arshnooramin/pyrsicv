@@ -53,7 +53,7 @@ def handle_syscall(mem_em, mem_wr, alu_val):
             # putchar implementation
             if which == 64:
                 # print the chars
-                print(MEM.mem[arg1:arg1 + arg2].decode("ASCII"), end = '')
+                print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}")
             MEM.mem[symbols['fromhost']] = 1
 
 def display():
@@ -164,7 +164,6 @@ for t in itertools.count():
 
     # get rf_wen
     rf_wen = controlFormatter(instr.get_instr(), "rf_wen")[1]
-    print(instr.instr)
     # update register values
     RF.clock(instr.rd, wb_mux(wb_sel), rf_wen)
 

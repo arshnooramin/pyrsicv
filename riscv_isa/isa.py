@@ -208,7 +208,7 @@ class Instruction():
         temp = self.val >> 12 & 0xFFFFF
         # rearrange to get imm[20|10:1|11|19:12]
         j_imm = (temp & 0x80000) | ((temp & 0xFF) << 11) | \
-                ((temp & 0x001) << 10) | ((temp & 0x7FE00) >> 9)
+                ((temp & 0x100) << 2) | ((temp & 0x7FE00) >> 9)
         return sextend(j_imm, 20) << 1
     
     def get_bimm(self):
