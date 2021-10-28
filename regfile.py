@@ -28,6 +28,7 @@ class RegFile:
         for y in range(0, 32, 4):
             print(" ".join([f"{regNumToName(i).rjust(4)}: {fmt_reg(i)}" \
                   for i in range(y, y+4)]))
+        print()
 
 # testbench for regfile
 if __name__=="__main__":

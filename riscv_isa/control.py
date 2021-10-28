@@ -1,10 +1,13 @@
-import csv
-from riscv_isa.decoder import control, enums
-
 """
+control.py
+========
 Generates a table for the control signals for each of the required
 instructions - outputs a csv file with the required signals and values
 """
+
+import csv
+from riscv_isa.decoder import control, enums
+
 # the required instructions to decode
 req = ["add", "mul", "sub", "sll", "mulh", "slt", "xor", "div", "srl", 
        "sra", "or", "rem", "and", "lb", "lh", "lw", "addi", "slli",
@@ -18,21 +21,22 @@ def controlFormatter(instr, field):
     val = enums[field][sig_type]
     return sig_type, val
 
+if __name__=="__main__":
 # opens and writes to a csv file
-with open('control_table.csv', 'w', newline='') as csvfile:
-    fields = control[list(control.keys())[0]].fields.copy()
-    fields.insert(0, "instr")
-    writer = csv.writer(csvfile)
+    with open('control_table.csv', 'w', newline='') as csvfile:
+        fields = control[list(control.keys())[0]].fields.copy()
+        fields.insert(0, "instr")
+        writer = csv.writer(csvfile)
 
-    writer.writerow(fields)
+        writer.writerow(fields)
 
-    for instr in req:
-        if instr not in control:
-            vals = ["xx"]*len(fields)
-            vals[0] = instr
-            writer.writerow(vals)
-        else:
-            out = ["%s (%s)" % controlFormatter(instr, field) \
-                   for field in control[instr].fields]
-            out.insert(0, instr)
-            writer.writerow(out)
+        for instr in req:
+            if instr not in control:
+                vals = ["xx"]*len(fields)
+                vals[0] = instr
+                writer.writerow(vals)
+            else:
+                out = ["%s (%s)" % controlFormatter(instr, field) \
+                    for field in control[instr].fields]
+                out.insert(0, instr)
+                writer.writerow(out)

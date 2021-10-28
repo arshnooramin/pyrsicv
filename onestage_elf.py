@@ -11,14 +11,28 @@ from regfile import RegFile
 from alu import alu
 from mux import make_mux
 
+# debug/silent flag
+DEBUG = True
+# test flag
+TEST = False
+
 # the PC register
 PC = Register()
 # the reg file
 RF = RegFile()
 
 # check if a path was provided
-if len(sys.argv) != 2:
+if len(sys.argv) < 2:
     exit("ERROR: input elf file not provided!")
+
+# check for flags
+for arg in sys.argv:
+    # if argument is a flag
+    if arg.startswith('-'):
+        if arg == '-s': # silent flag
+            DEBUG = False
+        elif arg == '-t':
+            TEST = True
 
 # get the inputted elf path
 elf_path = sys.argv[1]
@@ -26,12 +40,22 @@ elf_path = sys.argv[1]
 # construct a memory segment for instruction memory
 # load the contents from the 32-bit fetch_test hex file (big endian)
 try:
-    imem, symbols = load_elf(elf_path)
+    imem, symbols = load_elf(elf_path, quiet=not(DEBUG))
 except:
     exit("ERROR: couldn't read elf file!")
 
 # initialize memory from the elf
 MEM = Memory(imem)
+
+def handle_test():
+    "handles the output for test - checks whether test passed or not"
+    # if test flag is set
+    if TEST:
+        a0_val = RF.read(10)
+        if a0_val == 0:
+            print(f"{sys.argv[1]} -- Test Passed!")
+        else:
+            print(f"{sys.argv[1]} -- Test Failed! ({a0_val})")
 
 def handle_syscall(mem_em, mem_wr, alu_val):
     "handles UCB syscalls"
@@ -41,8 +65,10 @@ def handle_syscall(mem_em, mem_wr, alu_val):
             val = MEM.mem[symbols['tohost']]
             # handle exit call
             if val & 0b1 == 0b1:
-                print (f"SYSCALL: exit ({val>>1})\n")
-                RF.display()
+                if DEBUG: 
+                    print(f"SYSCALL: exit ({val>>1})\n")
+                    RF.display()
+                handle_test()
                 sys.exit(val>>1)
             # handle printf if not exit
             # get all the args for putchar
@@ -53,7 +79,8 @@ def handle_syscall(mem_em, mem_wr, alu_val):
             # putchar implementation
             if which == 64:
                 # print the chars
-                print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}")
+                if DEBUG: print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}")
+                else: print(f"{elf_path} output -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}")
             MEM.mem[symbols['fromhost']] = 1
 
 def display():
@@ -89,7 +116,6 @@ def branch_taken(op1, op2, br_fun):
     elif br_fun == 2 or br_fun == 5: # bgeu and bge
         return 2 if op1 >= op2 else 0
     elif br_fun == 3: # blt
-        print(op1, op2)
         return 2 if op1 < op2 else 0
     elif br_fun == 7: # bltu
         return 2 if op1 < op2 else 0
@@ -111,7 +137,7 @@ for t in itertools.count():
     if startup:
         PC.reset(symbols["_start"])
         startup = False
-        print(f"{t}:", display())
+        if DEBUG: print(f"{t}:", display())
         continue
 
     # access instruction memory
@@ -119,7 +145,7 @@ for t in itertools.count():
 
     # no op csr calls
     if instr.instr.startswith("csr"):
-        print(f"{t}: {instr.instr}", "instruction -- no-op\n")
+        if DEBUG: print(f"{t}: PC: {pc_val:08x}, IR: {instr.val:08x}, {instr.instr} -- no-op\n")
         PC.clock(pc_mux(pc_sel))
         continue
 
@@ -155,7 +181,7 @@ for t in itertools.count():
     # write data from alu to memory
     MEM.clock(alu_val, rs2_val, mem_wr)
     if mem_wr:
-        print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(alu_val):08x}")
+        if DEBUG: print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(alu_val):08x}")
     
     # define the wb mux
     wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, lambda: None)
@@ -168,16 +194,19 @@ for t in itertools.count():
     RF.clock(instr.rd, wb_mux(wb_sel), rf_wen)
 
     # print one line at the end of the clock cycle
-    print(f"{t}:", display())
+    if DEBUG: print(f"{t}:", display())
 
     # handle env calls
     # check a0 value env call type
     a0_val = RF.read(10)
     if instr.instr == 'ecall' and a0_val == 1:
-        print(f"ECALL({a0_val}): {RF.read(11)}\n")
+        if DEBUG: print(f"ECALL({a0_val}): {RF.read(11)}\n")
+        else: print(f"{elf_path} output -- {RF.read(11)}")
     elif instr.instr == 'ecall' and (a0_val == 0 or a0_val == 10):
-        print(f"ECALL({a0_val}): " + 'EXIT\n' if a0_val == 10 else f"ECALL({a0_val}): " + 'HALT\n')
-        RF.display()
+        if DEBUG: 
+            print(f"ECALL({a0_val}): " + 'EXIT\n' if a0_val == 10 else f"ECALL({a0_val}): " + 'HALT\n')
+            RF.display()
+        handle_test()
         break
 
     # check for UCB syscalls and handle them
@@ -196,7 +225,9 @@ for t in itertools.count():
 
     # check stopping conditions on NEXT instruction
     if imem[PC.out()] == 0:
-        print("Done -- end of program.\n")
-        # print register values at the end of program
-        RF.display()
+        if DEBUG: 
+            print("Done -- end of program.\n")
+            # print register values at the end of program
+            RF.display()
+        handle_test()
         break
