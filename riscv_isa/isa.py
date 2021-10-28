@@ -103,7 +103,8 @@ instr_dict = {
     115: {
         0: {
             0: 'ecall',
-            1: 'ebreak'
+            1: 'ebreak',
+            24: 'mret'
         },
         1: 'csrrw',
         2: 'csrrs',

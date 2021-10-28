@@ -144,9 +144,9 @@ for t in itertools.count():
     instr = Instruction(imem[pc_val], pc_val)
 
     # no op csr calls
-    if instr.instr.startswith("csr"):
+    if instr.instr.startswith("csr") or instr.instr == 'mret':
         if DEBUG: print(f"{t}: PC: {pc_val:08x}, IR: {instr.val:08x}, {instr.instr} -- no-op\n")
-        PC.clock(pc_mux(pc_sel))
+        PC.clock(4 + pc_val)
         continue
 
     # get rd, rs1, and rs2 addresses and their values using regfile
