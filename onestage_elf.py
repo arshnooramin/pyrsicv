@@ -15,6 +15,8 @@ from mux import make_mux
 DEBUG = True
 # test flag
 TEST = False
+# max cycle num
+MAX_CYCLES = 0
 
 # the PC register
 PC = Register()
@@ -26,13 +28,15 @@ if len(sys.argv) < 2:
     exit("ERROR: input elf file not provided!")
 
 # check for flags
-for arg in sys.argv:
+for i, arg in enumerate(sys.argv):
     # if argument is a flag
     if arg.startswith('-'):
         if arg == '-s': # silent flag
             DEBUG = False
         elif arg == '-t':
             TEST = True
+        elif arg == '-x':
+            MAX_CYCLES = int(sys.argv[i+1]) * 1000
 
 # get the inputted elf path
 elf_path = sys.argv[1]
@@ -222,6 +226,14 @@ for t in itertools.count():
 
     # clock logic blocks, PC is the only clocked module!
     PC.clock(pc_mux(pc_sel))
+
+    if MAX_CYCLES and (t >= MAX_CYCLES):
+        if DEBUG: 
+            print("HALT: Max cycles reached.\n")
+            # print register values at the end of program
+            RF.display()
+        handle_test()
+        break
 
     # check stopping conditions on NEXT instruction
     if imem[PC.out()] == 0:
