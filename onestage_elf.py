@@ -7,6 +7,7 @@ from pydigital.elfloader import load_elf
 from pydigital.utils import as_twos_comp
 from riscv_isa.control import controlFormatter
 from riscv_isa import Instruction
+from riscv_isa.csrs import CsrMemory
 from regfile import RegFile
 from alu import alu
 from mux import make_mux
@@ -22,6 +23,8 @@ MAX_CYCLES = 0
 PC = Register()
 # the reg file
 RF = RegFile()
+# init csr memory
+CSR = CsrMemory()
 
 # check if a path was provided
 if len(sys.argv) < 2:
@@ -147,8 +150,8 @@ for t in itertools.count():
     # access instruction memory
     instr = Instruction(imem[pc_val], pc_val)
 
-    # no op csr calls
-    if instr.instr.startswith("csr") or instr.instr == 'mret':
+    # no op mret calls
+    if instr.instr == 'mret':
         if DEBUG: print(f"{t}: PC: {pc_val:08x}, IR: {instr.val:08x}, {instr.instr} -- no-op\n")
         PC.clock(4 + pc_val)
         continue
@@ -186,9 +189,18 @@ for t in itertools.count():
     MEM.clock(alu_val, rs2_val, mem_wr)
     if mem_wr:
         if DEBUG: print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(alu_val):08x}")
+
+    # get csr cmd
+    csr_cmd = controlFormatter(instr.get_instr(), "csr_cmd")
+    # init csr val
+    csr_reg = None
+    # handle csr instructions
+    if instr.instr.startswith("csr"):
+        csr_val = instr.rs1 if instr.instr.endswith("i") else rs1_val
+        csr_reg = lambda: CSR.clock(instr.imm, csr_cmd, csr_val, t)
     
     # define the wb mux
-    wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, lambda: None)
+    wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, csr_reg)
     # get wb_sel
     wb_sel = controlFormatter(instr.get_instr(), "wb_sel")[1]
 
@@ -227,6 +239,7 @@ for t in itertools.count():
     # clock logic blocks, PC is the only clocked module!
     PC.clock(pc_mux(pc_sel))
 
+    # check if max cycles reached
     if MAX_CYCLES and (t >= MAX_CYCLES):
         if DEBUG: 
             print("HALT: Max cycles reached.\n")
