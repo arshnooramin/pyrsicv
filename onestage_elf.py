@@ -197,10 +197,11 @@ for t in itertools.count():
     # handle csr instructions
     if instr.instr.startswith("csr"):
         csr_val = instr.rs1 if instr.instr.endswith("i") else rs1_val
-        csr_reg = lambda: CSR.clock(instr.imm, csr_cmd, csr_val, t)
+        csr_reg = CSR.clock(instr.imm, csr_cmd[1], csr_val, t)
+        # print(f"csr output: {hex(instr.imm)} {csr_cmd[1]}, {hex(csr_val)}, {csr_reg()}")
     
     # define the wb mux
-    wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, csr_reg)
+    wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, lambda: csr_reg)
     # get wb_sel
     wb_sel = controlFormatter(instr.get_instr(), "wb_sel")[1]
 
