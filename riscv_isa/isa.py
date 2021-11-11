@@ -193,8 +193,8 @@ class Instruction():
         # check if csr
         if self.instr.startswith("csr"):
             # don't sign extend
-            return self.val >> 20 & 0xFFF
-        return sextend(self.val >> 20 & 0xFFF, 12)
+            return (self.val >> 20) & 0xFFF
+        return sextend((self.val >> 20) & 0xFFF, 12)
 
     def get_simm(self):
         "computes and returns the s immediate"

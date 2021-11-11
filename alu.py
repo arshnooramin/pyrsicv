@@ -1,4 +1,4 @@
-from pydigital.utils import sextend
+from pydigital.utils import sextend, as_twos_comp
 
 aluNumToOp = ['x','xor','cp','sltu',   # 0..3
               'and', 'add', 'slt', 'sra', # 4..7
@@ -12,7 +12,7 @@ def alu(op1, op2, alu_fun):
     if alu_fun == 2: # cp
         return op1
     if alu_fun == 3: # sltu
-        return op1 * (2**op2)
+        return 1 if as_twos_comp(op1) < as_twos_comp(op2) else 0
     if alu_fun == 4: # and
         return op1 & op2
     if alu_fun == 5: # add

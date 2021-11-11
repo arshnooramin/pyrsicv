@@ -64,11 +64,12 @@ def handle_test():
         else:
             print(f"{sys.argv[1]} -- Test Failed! ({a0_val})")
 
-def handle_syscall(mem_em, mem_wr, alu_val):
+def handle_syscall(mem_em, mem_wr, word_size, alu_val):
     "handles UCB syscalls"
     # check if a syscall was made
     if mem_em == 1 and mem_wr == 1 and 'tohost' in symbols:
-        if alu_val == symbols['tohost'] + 4:
+        if (word_size == 4 and as_twos_comp(alu_val) == symbols['tohost'] + 4) or \
+           (word_size == 8 and as_twos_comp(alu_val) == symbols['tohost']):
             val = MEM.mem[symbols['tohost']]
             # handle exit call
             if val & 0b1 == 0b1:
@@ -86,19 +87,14 @@ def handle_syscall(mem_em, mem_wr, alu_val):
             # putchar implementation
             if which == 64:
                 # print the chars
-                if DEBUG: print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}")
-                else: print(f"{elf_path} output -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}")
+                if DEBUG: print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2]}\n")
+                else: print(f"{MEM.mem[arg1:arg1 + arg2]}\n")
             MEM.mem[symbols['fromhost']] = 1
 
 def display():
     if pc_val == None:
         return "PC: xxxxxxxx, IR: xxxxxxxx\n"
     else:
-        if instr.imm != None:
-            rs2imm_str = f"rs2: xxxxxxxx [xx] imm: {instr.imm:04x}"
-        else:
-            rs2imm_str = f"rs2: {rs2_val:x} [{instr.rs2}] imm: xxxx"
-        
         if instr.rd != None:
             rd_str = f"rd: {RF.read(instr.rd):x} [{instr.rd}] "
         else:
@@ -108,9 +104,19 @@ def display():
             rs1_str = f"rs1: {rs1_val:x} [{instr.rs1}] "
         else:
             rs1_str = f"rs1: xxxxxxxx [xx] "
+
+        if rs2_val != None:
+            rs2_str = f"rs2: {rs2_val:x} [{instr.rs2}] "
+        else:
+            rs2_str = f"rs2: xxxxxxxx [xx] "
+
+        if instr.imm != None:
+            imm_str = f"imm: {instr.imm:04x} "
+        else:
+            imm_str = f"imm: xxxx "
         
         return f"PC: {pc_val:08x}, IR: {instr.val:08x}, {instr}" + \
-            rd_str + rs1_str + rs2imm_str + \
+            rd_str + rs1_str + rs2_str + imm_str + \
             f" op: {instr.get_opcode():x} func3: {instr.funct3} func7: {instr.funct7}" + \
             f" alu_fun: {alufun_tup[0]}\n"
 
@@ -120,12 +126,14 @@ def branch_taken(op1, op2, br_fun):
         return 0
     elif br_fun == 1: # jr
         return 1
-    elif br_fun == 2 or br_fun == 5: # bgeu and bge
+    elif br_fun == 2: # bgeu
+        return 2 if as_twos_comp(op1) >= as_twos_comp(op2) else 0
+    elif br_fun == 5: # bge
         return 2 if op1 >= op2 else 0
     elif br_fun == 3: # blt
         return 2 if op1 < op2 else 0
     elif br_fun == 7: # bltu
-        return 2 if op1 < op2 else 0
+        return 2 if as_twos_comp(op1) < as_twos_comp(op2) else 0
     elif br_fun == 4: # bne
         return 2 if op1 != op2 else 0
     elif br_fun == 6: # jump
@@ -179,16 +187,21 @@ for t in itertools.count():
     # perform the alu operation
     alu_val = alu(op1_mux(op1_sel), op2_mux(op2_sel), alufun_tup[1])
 
+    # get mask type
+    mask_type = controlFormatter(instr.get_instr(), "mask_type")[1]
+
+    # check if signed or not
+    signed = 'u' not in instr.instr
     # read data memory -> get addr from alu
-    rdata = lambda: MEM.out(alu_val)
+    rdata = lambda: MEM.out(as_twos_comp(alu_val), mask_type, signed)
 
     # get mem write and mem em
     mem_em = controlFormatter(instr.get_instr(), "mem_em")[1]
     mem_wr = controlFormatter(instr.get_instr(), "mem_wr")[1]
     # write data from alu to memory
-    MEM.clock(alu_val, rs2_val, mem_wr)
+    MEM.clock(as_twos_comp(alu_val), rs2_val, mem_wr, mask_type)
     if mem_wr:
-        if DEBUG: print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(alu_val):08x}")
+        if DEBUG: print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(as_twos_comp(alu_val)):08x}")
 
     # get csr cmd
     csr_cmd = controlFormatter(instr.get_instr(), "csr_cmd")
@@ -198,7 +211,6 @@ for t in itertools.count():
     if instr.instr.startswith("csr"):
         csr_val = instr.rs1 if instr.instr.endswith("i") else rs1_val
         csr_reg = CSR.clock(instr.imm, csr_cmd[1], csr_val, t)
-        # print(f"csr output: {hex(instr.imm)} {csr_cmd[1]}, {hex(csr_val)}, {csr_reg()}")
     
     # define the wb mux
     wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, lambda: csr_reg)
@@ -227,7 +239,7 @@ for t in itertools.count():
         break
 
     # check for UCB syscalls and handle them
-    handle_syscall(mem_em, mem_wr, alu_val)
+    handle_syscall(mem_em, mem_wr, mask_type, alu_val)
     
     # define the pc mux
     pc_mux = make_mux(lambda: 4 + pc_val, lambda: instr.imm + as_twos_comp(rs1_val), lambda: instr.imm + pc_val, lambda: instr.imm + pc_val, lambda: None)
