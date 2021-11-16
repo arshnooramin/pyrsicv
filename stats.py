@@ -94,4 +94,4 @@ class Stats:
         print(f"instruction fetch: {self.inst_fetch_bytes} bytes")
         print(f"mcycle: {self.mcycle} cycles")
         print(f"memory write: {self.mem_write_bytes} bytes")
-        print(f"memory read: {self.mem_read_bytes} bytes")
+        print(f"memory read: {self.mem_read_bytes} bytes\n")
