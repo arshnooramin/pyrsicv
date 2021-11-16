@@ -9,6 +9,7 @@ from riscv_isa.control import controlFormatter
 from riscv_isa import Instruction
 from riscv_isa.csrs import CsrMemory
 from regfile import RegFile
+from stats import Stats
 from alu import alu
 from mux import make_mux
 
@@ -16,6 +17,8 @@ from mux import make_mux
 DEBUG = True
 # test flag
 TEST = False
+# print stats flag
+STATS = False
 # max cycle num
 MAX_CYCLES = 0
 
@@ -25,6 +28,8 @@ PC = Register()
 RF = RegFile()
 # init csr memory
 CSR = CsrMemory()
+# stats counter
+COUNT = Stats()
 
 # check if a path was provided
 if len(sys.argv) < 2:
@@ -40,6 +45,8 @@ for i, arg in enumerate(sys.argv):
             TEST = True
         elif arg == '-x':
             MAX_CYCLES = int(sys.argv[i+1]) * 1000
+        elif arg == '-p':
+            STATS = True
 
 # get the inputted elf path
 elf_path = sys.argv[1]
@@ -60,9 +67,9 @@ def handle_test():
     if TEST:
         a0_val = RF.read(10)
         if a0_val == 0:
-            print(f"{sys.argv[1]} -- Test Passed!")
+            print(f"{sys.argv[1]} -- Test Passed!\n")
         else:
-            print(f"{sys.argv[1]} -- Test Failed! ({a0_val})")
+            print(f"{sys.argv[1]} -- Test Failed! ({a0_val})\n")
 
 def handle_syscall(mem_em, mem_wr, word_size, alu_val):
     "handles UCB syscalls"
@@ -77,6 +84,8 @@ def handle_syscall(mem_em, mem_wr, word_size, alu_val):
                     print(f"SYSCALL: exit ({val>>1})\n")
                     RF.display()
                 handle_test()
+                if STATS:
+                    COUNT.display()
                 sys.exit(val>>1)
             # handle printf if not exit
             # get all the args for putchar
@@ -87,8 +96,16 @@ def handle_syscall(mem_em, mem_wr, word_size, alu_val):
             # putchar implementation
             if which == 64:
                 # print the chars
-                if DEBUG: print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2]}\n")
-                else: print(f"{MEM.mem[arg1:arg1 + arg2]}\n")
+                if DEBUG: 
+                    try:
+                        print(f"SYSCALL: printf -- {MEM.mem[arg1:arg1 + arg2].decode('ASCII')}\n")
+                    except:
+                        print("SYSCALL: printf -- PRINT ERROR: unidentified character\n")
+                else: 
+                    try:
+                        print(f"{MEM.mem[arg1:arg1 + arg2].decode('ASCII')}\n")
+                    except:
+                        print("PRINT ERROR: unidentified character\n")
             MEM.mem[symbols['fromhost']] = 1
 
 def display():
@@ -157,6 +174,10 @@ for t in itertools.count():
 
     # access instruction memory
     instr = Instruction(imem[pc_val], pc_val)
+    # count the instruction fetch bytes -> +4 for ea. instr
+    COUNT.inst_fetch_bytes += 4
+    # update the instruction count and name set
+    COUNT.update_instr_stats(instr.instr)
 
     # no op mret calls
     if instr.instr == 'mret':
@@ -191,7 +212,7 @@ for t in itertools.count():
     mask_type = controlFormatter(instr.get_instr(), "mask_type")[1]
 
     # check if signed or not
-    signed = 'u' not in instr.instr
+    signed = not(instr.instr.endswith('u'))
     # read data memory -> get addr from alu
     rdata = lambda: MEM.out(as_twos_comp(alu_val), mask_type, signed)
 
@@ -202,6 +223,8 @@ for t in itertools.count():
     MEM.clock(as_twos_comp(alu_val), rs2_val, mem_wr, mask_type)
     if mem_wr:
         if DEBUG: print(f"dmem_write @ 0x{alu_val:08x} to value 0x{MEM.out(as_twos_comp(alu_val)):08x}")
+        # count num of bytes written
+        COUNT.mem_write_bytes += mask_type
 
     # get csr cmd
     csr_cmd = controlFormatter(instr.get_instr(), "csr_cmd")
@@ -216,6 +239,10 @@ for t in itertools.count():
     wb_mux = make_mux(lambda: 4 + pc_val, lambda: alu_val, rdata, lambda: csr_reg)
     # get wb_sel
     wb_sel = controlFormatter(instr.get_instr(), "wb_sel")[1]
+
+    # count num of bytes read
+    if wb_sel == 2:
+        COUNT.mem_read_bytes += mask_type
 
     # get rf_wen
     rf_wen = controlFormatter(instr.get_instr(), "rf_wen")[1]
@@ -236,6 +263,8 @@ for t in itertools.count():
             print(f"ECALL({a0_val}): " + 'EXIT\n' if a0_val == 10 else f"ECALL({a0_val}): " + 'HALT\n')
             RF.display()
         handle_test()
+        if STATS:
+            COUNT.display()
         break
 
     # check for UCB syscalls and handle them
@@ -251,6 +280,13 @@ for t in itertools.count():
 
     # clock logic blocks, PC is the only clocked module!
     PC.clock(pc_mux(pc_sel))
+    # if a branch type instruction
+    if instr.type == "sb":
+        # update branch stats
+        COUNT.update_branch_stats(pc_val, instr.imm + pc_val, pc_sel == 2)
+    
+    # update mcycle
+    COUNT.mcycle += 1
 
     # check if max cycles reached
     if MAX_CYCLES and (t >= MAX_CYCLES):
@@ -259,6 +295,8 @@ for t in itertools.count():
             # print register values at the end of program
             RF.display()
         handle_test()
+        if STATS:
+            COUNT.display()
         break
 
     # check stopping conditions on NEXT instruction
@@ -268,4 +306,6 @@ for t in itertools.count():
             # print register values at the end of program
             RF.display()
         handle_test()
+        if STATS:
+            COUNT.display()
         break

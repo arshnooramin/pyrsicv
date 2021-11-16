@@ -24,5 +24,5 @@ if not os.path.isdir(test_dir):
 for elf_file in os.listdir(test_dir):
     # execute the test for each elf file
     print(f"TESTING: --- {elf_file}")
-    os.system(f"python onestage_elf.py {test_dir}{elf_file} -t -s")
+    os.system(f"python onestage_elf.py {test_dir}{elf_file} -t -s -p")
 

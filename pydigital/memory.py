@@ -4,11 +4,14 @@ memory.py
 Provides a byte-addressed memory.
 """
 from pydigital.utils import sextend
+
 class Memory:
     "Memory module which implements the risc-v sodor memory interface"
+    
     def __init__(self, segment = None):
         "initialize with a memory segment"
         self.mem = segment
+    
     def out(self, addr, byte_count = 4, signed = True):
         "read access"
         if addr == None:
@@ -28,6 +31,7 @@ class Memory:
             return self.mem[addr] & 0xffffffffffffffff
         else:
             raise ValueError("Mem can only access Bytes/Half Words/Words.")
+    
     def clock(self, addr, data, mem_rw = 0, byte_count = 4):
         "synchronous write, mem_rw=1 for write"
         if mem_rw == 1:
@@ -38,11 +42,14 @@ class Memory:
                 byteorder = self.mem.byteorder, signed = False)
             #print(f'MEM val is {val}')
             self.mem[addr] = val
+
 class ELFMemory:
     "ELFMemory is a collection of memory segments that supports get/set"
+    
     def __init__(self):        
         self.mems = []
         self.byteorder = None
+    
     def __getitem__(self, i):
         if i == None: 
             return None
@@ -50,12 +57,14 @@ class ELFMemory:
             if i in m:
                 return m[i]
         raise IndexError(f"Address {i:08x} not found in memory.")
+    
     def __setitem__(self, i, val):
         if i == None:
             return
         for m in self.mems:
             if i in m:                  
                 m[i] = val
+    
     def __iadd__(self, seg):
         if self.byteorder == None:
             self.byteorder = seg.byteorder      
@@ -63,20 +72,25 @@ class ELFMemory:
             raise ValueError("Byteorder does not match previous segments.")
         self.mems.append(seg)
         return self
+    
     def begin_addr(self):
         "return the lowest begin address included"
         return min([m.begin_addr for m in self.mems])
+    
     def end_addr(self):
         "return the highest end address included"
         return max([m.end_addr for m in self.mems])
+    
     def __str__(self):
         "debug segment addresses"
         s = []
         for i, seg in enumerate(self.mems):
             s += [f"[{i}] {seg.begin_addr:08x}:{seg.end_addr:08x} ({len(seg.data):4x} bytes)"]
         return "\n".join(s)
+    
     def __len__(self):
         return sum([len(m.data) for m in self.mems])
+
 class MemorySegment:
     "A continuous segment of byte addressable memory"
     def __init__(self, begin_addr = 0x1000, count = None, 
@@ -98,8 +112,10 @@ class MemorySegment:
                 self.data = bytearray(data)
         self.end_addr = begin_addr + len(self.data)
         self.begin_addr = begin_addr
+    
     def __str__(self):
         return f"Memory[{self.begin_addr:8x}:{self.end_addr:8x}] ({len(self.data)})"
+    
     def __getitem__(self, i):
         "get a word from a given *byte* address"
         if i == None:
@@ -121,6 +137,7 @@ class MemorySegment:
             return int.from_bytes(
                 self.data[i: i+self.word_size],
                 byteorder=self.byteorder, signed=False)
+    
     def __setitem__(self, i, val, signed=False):
         "set a word at given *byte* address"
         if type(val) == int:
@@ -137,12 +154,14 @@ class MemorySegment:
         else:
             raise ValueError("Value must be bytes or int.")
         # self.data[(i - self.begin_addr) // self.word_size] = self.fromTwosComp(val)
+    
     def __contains__(self, addr):
         "is the given byte address in this memory segment?"
         if isinstance(addr, slice):
             return addr.start in self and addr.stop in self
         else:
             return addr >= self.begin_addr and addr < self.end_addr
+    
     def to_hex(self):
         s = ["@" + format(int(self.begin_addr / self.word_size), "x")]
         
