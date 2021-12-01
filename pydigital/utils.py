@@ -6,6 +6,7 @@ Misc utilities for working on digital systems including sign extension of python
 
 import re
 from functools import partial
+
 def verilog_fmt(fstr, *args, timeval = -1):
     """
     Verilog % style formating

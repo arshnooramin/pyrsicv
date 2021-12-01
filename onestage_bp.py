@@ -12,7 +12,7 @@ from regfile import RegFile
 from stats import Stats
 from alu import alu
 from mux import make_mux
-from predictors import BranchHistory
+from predictors import BranchHistory, GShare, PatternHistory
 
 # debug/silent flag
 DEBUG = True
@@ -31,8 +31,12 @@ RF = RegFile()
 CSR = CsrMemory()
 # stats counter
 COUNT = Stats()
-# the BHT class
-BHT = BranchHistory(8, 2, 4)
+# two-bit BHT class
+twobit_bht = BranchHistory(8, 2, 4)
+# three-bit PHT
+threebit_pht = PatternHistory(3)
+# two-bit GShare
+twobit_gshare = GShare(2, 8, 2, 4)
 
 # check if a path was provided
 if len(sys.argv) < 2:
@@ -64,6 +68,14 @@ except:
 # initialize memory from the elf
 MEM = Memory(imem)
 
+def handle_exit():
+    if DEBUG: RF.display()
+    handle_test()
+    twobit_bht.display()
+    threebit_pht.display()
+    twobit_gshare.display()
+    if STATS: COUNT.display()
+
 def handle_test():
     "handles the output for test - checks whether test passed or not"
     # if test flag is set
@@ -85,10 +97,7 @@ def handle_syscall(mem_em, mem_wr, word_size, alu_val):
             if val & 0b1 == 0b1:
                 if DEBUG: 
                     print(f"SYSCALL: exit ({val>>1})\n")
-                    RF.display()
-                handle_test()
-                if STATS:
-                    COUNT.display()
+                handle_exit()
                 sys.exit(val>>1)
             # handle printf if not exit
             # get all the args for putchar
@@ -264,10 +273,7 @@ for t in itertools.count():
     elif instr.instr == 'ecall' and (a0_val == 0 or a0_val == 10):
         if DEBUG: 
             print(f"ECALL({a0_val}): " + 'EXIT\n' if a0_val == 10 else f"ECALL({a0_val}): " + 'HALT\n')
-            RF.display()
-        handle_test()
-        if STATS:
-            COUNT.display()
+        handle_exit()
         break
 
     # check for UCB syscalls and handle them
@@ -287,8 +293,10 @@ for t in itertools.count():
     if instr.type == "sb":
         # update branch stats
         COUNT.update_branch_stats(pc_val, instr.imm + pc_val, pc_sel == 2)
-        BHT.predict_update(pc_val, pc_sel == 2)
-        BHT.display()
+        twobit_bht.predict_update(pc_val, pc_sel == 2)
+        threebit_pht.predict_update(pc_val, pc_sel == 2)
+        twobit_gshare.predict_update(pc_val, pc_sel == 2)
+        # twobit_gshare.display()
     
     # update mcycle
     COUNT.mcycle += 1
@@ -297,20 +305,12 @@ for t in itertools.count():
     if MAX_CYCLES and (t >= MAX_CYCLES):
         if DEBUG: 
             print("HALT: Max cycles reached.\n")
-            # print register values at the end of program
-            RF.display()
-        handle_test()
-        if STATS:
-            COUNT.display()
+        handle_exit()
         break
 
     # check stopping conditions on NEXT instruction
     if imem[PC.out()] == 0:
         if DEBUG: 
             print("Done -- end of program.\n")
-            # print register values at the end of program
-            RF.display()
-        handle_test()
-        if STATS:
-            COUNT.display()
+        handle_exit()
         break
